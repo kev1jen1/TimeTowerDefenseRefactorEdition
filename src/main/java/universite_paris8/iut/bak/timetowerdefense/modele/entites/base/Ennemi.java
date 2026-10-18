@@ -33,95 +33,90 @@ public class Ennemi extends Entite implements Destructible {
     private int compteurAttaque = 0;
     private boolean estBloque = false;
 
-    public Ennemi(double x, double y, int pv, int vitesseBase, int recompense, List<Point2D> chemin) {
+    public Ennemi(double x, double y, int pv, double vitesseBase, int recompense, List<Point2D> chemin) {
         super(x, y);
         this.pv = pv;
+        this.pvMax = pv;
         this.vitesseBase = vitesseBase;
         this.vitesseActuelle = vitesseBase;
         this.recompense = recompense;
 
         this.chemin = chemin;
-        etapeActuelle = 0;
-        this.pvMax = pv;
+        this.etapeActuelle = 0;
         this.pvProp = new SimpleDoubleProperty(pv);
         this.direction = new SimpleIntegerProperty(-1);
     }
+
 
     public Ennemi(int pv, double vitesseBase, int recompense, List<Point2D> chemin) {
-        super();
-        super.setX(0);
-        super.setY(64 * 9);
-        this.pv = pv;
-        this.vitesseBase = vitesseBase;
-        this.vitesseActuelle = vitesseBase;
-        this.recompense = recompense;
-
-        this.chemin = chemin;
-        etapeActuelle = 0;
-        this.pvMax = pv;
-        this.pvProp = new SimpleDoubleProperty(pv);
-        this.direction = new SimpleIntegerProperty(-1);
-    }
-
-    public Ennemi(int x , int y, List<Point2D> chemin) {
-        super();
-        super.setX(x);
-        super.setY(y);
-        this.pv = 25;
-        this.vitesseBase = 2;
-        this.vitesseActuelle = 2;
-        this.recompense = 5;
-        this.chemin = chemin;
-        etapeActuelle = 0;
-        this.pvMax = pv;
-        this.pvProp = new SimpleDoubleProperty(pv);
-        this.direction = new SimpleIntegerProperty(-1);
+        this(0.0, 0.0, pv, vitesseBase, recompense, chemin);
     }
 
 
-//     Fait avancer l'ennemi le long de son chemin.
-//     Gère également l'application des altérations d'état (brûlure, étourdissement, ralentissement)
-//     et l'arrêt s'il rencontre un obstacle.
-    public void avancer() {
+    public Ennemi(int x, int y, List<Point2D> chemin) {
+        this(x, y, 25, 2.0, 5, chemin);
+    }
+
+
+
+public void avancer() {
+    gererBrulure();
+    if (estEtourdiOuBloque()) {
+        return;
+    }
+    calculerVitesseSelonStatuts();
+    deplacerVersProchaineEtape();
+}
+
+    private void gererBrulure() {
         if (this.dureeBrulageRestante > 0) {
             this.dureeBrulageRestante--;
             if (this.dureeBrulageRestante % 10 == 0) {
                 this.recevoirDegats(1);
             }
         }
+    }
 
+    private boolean estEtourdiOuBloque() {
         if (this.dureeStunRestante > 0) {
             this.dureeStunRestante--;
             this.vitesseActuelle = 0;
-            return; // Bloque le mouvement tant qu'étourdi
+            return true;
         }
+        if (this.estBloque) {
+            this.estBloque = false;
+            return true;
+        }
+        return false;
+    }
 
+    private void calculerVitesseSelonStatuts() {
         this.vitesseActuelle = this.vitesseBase;
-
         if (this.dureeSlowRestante > 0) {
             this.dureeSlowRestante--;
             this.vitesseActuelle *= 0.5;
         }
-
         if (this.dureeSpeedBoostRestante > 0) {
             this.dureeSpeedBoostRestante--;
             this.vitesseActuelle *= 1.3;
         }
+    }
 
-        if (this.estBloque) {
-            this.estBloque = false;
+    private void deplacerVersProchaineEtape() {
+        if (aAtteintLaBase()) {
             return;
         }
-
-        // 5. Déplacement physique
-        if (chemin == null || etapeActuelle >= chemin.size()) return;
-
         Point2D caseCible = chemin.get(etapeActuelle);
         double cibleX = caseCible.getX() * TILE_SIZE;
         double cibleY = caseCible.getY() * TILE_SIZE;
         double distanceX = cibleX - this.getX();
         double distanceY = cibleY - this.getY();
 
+        mettreAJourPosition(distanceX, distanceY);
+        verifierArriveeEtape(cibleX, cibleY, distanceX, distanceY);
+    }
+
+    private void mettreAJourPosition(double distanceX, double distanceY) {
         if (distanceX > 0) {
             this.setX(this.getX() + vitesseActuelle);
             this.direction.set(-1);
@@ -130,10 +125,15 @@ public class Ennemi extends Entite implements Destructible {
             this.direction.set(1);
         }
 
-        if (distanceY > 0) this.setY(this.getY() + vitesseActuelle);
-        else if (distanceY < 0) this.setY(this.getY() - vitesseActuelle);
+        if (distanceY > 0) {
+            this.setY(this.getY() + vitesseActuelle);
+        } else if (distanceY < 0) {
+            this.setY(this.getY() - vitesseActuelle);
+        }
+    }
 
-        if (vitesseActuelle > 0 && Math.abs(distanceX) <= vitesseActuelle && Math.abs(distanceY) <= vitesseActuelle) {
+    private void verifierArriveeEtape(double cibleX, double cibleY, double dx, double dy) {
+        if (vitesseActuelle > 0 && Math.abs(dx) <= vitesseActuelle && Math.abs(dy) <= vitesseActuelle) {
             this.setX(cibleX);
             this.setY(cibleY);
             etapeActuelle++;
@@ -208,12 +208,16 @@ public class Ennemi extends Entite implements Destructible {
         this.etapeActuelle = etapeActuelle;
     }
 
+    private double calculerDemiTuile() {
+        return TILE_SIZE / 2.0;
+    }
+
     public double getCentreX() {
-        return this.getX() + TILE_SIZE / 2.0;
+        return this.getX() + calculerDemiTuile();
     }
 
     public double getCentreY() {
-        return this.getY() + TILE_SIZE / 2.0;
+        return this.getY() + calculerDemiTuile();
     }
 
     public List<Point2D> getChemin() {
