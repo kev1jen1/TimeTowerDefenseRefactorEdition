@@ -19,7 +19,7 @@ public class Futur extends Epoque {
                         { 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0 },
                         { 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0 }
                 },
-                new Point2D[] { new Point2D(2, 10), new Point2D(10, 10), new Point2D(2, 10) },
+                new Point2D[] { new Point2D(2, 10), new Point2D(10, 10)/* , new Point2D(2, 10) */ },
                 new Point2D(6, 0)
 
         );
